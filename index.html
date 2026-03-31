@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claude Code Visible</title>
+    <meta
+      name="description"
+      content="把 Claude Code 的启动、查询、工具执行、MCP、Skill、Plugin、Coordinator 主流程可视化。"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Claude Code Visible</p>
+          <h1>不读源码，也能看懂 Claude Code 是怎么跑起来的</h1>
+          <p class="lede">
+            基于 <code>claude-code-sourcemap</code> 中还原出的 Claude Code
+            结构，抽出它最关键的执行主链路：CLI 启动、配置初始化、工具装配、一次用户请求、工具执行回流，以及
+            MCP / Skill / Plugin / Coordinator 这些扩展层是如何挂进去的。
+          </p>
+          <div class="hero-actions">
+            <button class="primary-button" data-scroll-target="journey">
+              看主流程
+            </button>
+            <button class="secondary-button" data-scroll-target="extension-system">
+              看扩展系统
+            </button>
+          </div>
+        </div>
+        <aside class="hero-stats">
+          <div class="stat-card">
+            <span class="stat-label">还原版本</span>
+            <strong>2.1.88</strong>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">还原文件数</span>
+            <strong>4756</strong>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">TS / TSX</span>
+            <strong>1884</strong>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">核心视角</span>
+            <strong>启动 + 一轮请求 + 扩展层</strong>
+          </div>
+        </aside>
+      </header>
+
+      <main>
+        <section class="section intro-grid">
+          <article class="panel spotlight">
+            <div class="panel-head">
+              <p class="eyebrow">一句话总览</p>
+              <h2>Claude Code 本质上是一个“终端 UI + 对话状态机 + 工具编排器”</h2>
+            </div>
+            <p>
+              入口从 <code>entrypoints/cli.tsx</code> 开始，真正的大脑在
+              <code>main.tsx</code> 做初始化与装配；交互 UI 由 Ink/React 驱动；
+              一次请求先被 <code>processUserInput</code> 预处理，再进入
+              <code>query()</code> 的流式循环；当模型返回
+              <code>tool_use</code> 时，由工具编排器执行 Bash、Read、Edit、MCP
+              等工具，再把结果回灌给模型继续推理。
+            </p>
+          </article>
+
+          <article class="panel quote-panel">
+            <p class="eyebrow">你真正要记住的分层</p>
+            <ol class="layer-list">
+              <li><strong>启动层</strong>：CLI 参数解析、模式分流、配置和环境准备。</li>
+              <li><strong>装配层</strong>：工具池、commands、skills、plugins、MCP 客户端、agent 定义。</li>
+              <li><strong>执行层</strong>：REPL 或 headless QueryEngine 发起一轮对话。</li>
+              <li><strong>编排层</strong>：query 循环处理模型流式输出、工具调用、压缩和恢复。</li>
+              <li><strong>扩展层</strong>：MCP、Skill、Plugin、Coordinator、Remote/Bridge 叠加能力。</li>
+            </ol>
+          </article>
+        </section>
+
+        <section id="journey" class="section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Main Flow</p>
+              <h2>Claude Code 主流程</h2>
+            </div>
+            <div class="view-switch" id="view-switch"></div>
+          </div>
+
+          <div class="journey-layout">
+            <div id="journey-map" class="journey-map" aria-live="polite"></div>
+            <aside class="detail-panel panel">
+              <p class="eyebrow">当前阶段</p>
+              <h3 id="detail-title">选择一个阶段</h3>
+              <p id="detail-summary" class="detail-summary"></p>
+              <ul id="detail-points" class="detail-points"></ul>
+              <div class="detail-meta">
+                <div>
+                  <span class="meta-label">关键文件</span>
+                  <div id="detail-files" class="chip-list"></div>
+                </div>
+                <div>
+                  <span class="meta-label">为什么重要</span>
+                  <p id="detail-importance" class="meta-copy"></p>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section id="extension-system" class="section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Extension System</p>
+              <h2>MCP / Skill / Plugin / Coordinator 是怎么挂上去的</h2>
+            </div>
+          </div>
+          <div id="extension-grid" class="extension-grid"></div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Source Map</p>
+              <h2>如果只看少量关键文件，优先看这些</h2>
+            </div>
+          </div>
+          <div id="file-map" class="file-map"></div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Reading Model</p>
+              <h2>用一句话理解每条链路</h2>
+            </div>
+          </div>
+          <div class="reading-grid">
+            <article class="panel">
+              <h3>启动</h3>
+              <p>
+                <code>entrypoints/cli.tsx</code> 先做快路径分发，真正复杂的初始化在
+                <code>main.tsx</code> 中完成。
+              </p>
+            </article>
+            <article class="panel">
+              <h3>交互</h3>
+              <p>
+                <code>launchRepl()</code> 把 Ink 的根组件、AppState 和
+                REPL 屏幕拼起来，形成终端应用。
+              </p>
+            </article>
+            <article class="panel">
+              <h3>请求</h3>
+              <p>
+                用户输入不会直接打给模型，而是先过 slash command、hook、附件、权限和上下文注入。
+              </p>
+            </article>
+            <article class="panel">
+              <h3>工具</h3>
+              <p>
+                模型输出中只要出现 <code>tool_use</code>，Claude Code 就会进入工具执行回路，而不是立刻结束。
+              </p>
+            </article>
+            <article class="panel">
+              <h3>扩展</h3>
+              <p>
+                Skill、Plugin、MCP 都不是平行体系，它们最终都会变成模型可见的命令、工具、资源或上下文。
+              </p>
+            </article>
+            <article class="panel">
+              <h3>多 Agent</h3>
+              <p>
+                Coordinator 模式不是换一个 UI，而是在同一套 query / tool
+                基础设施上，额外叠加 worker 编排规则。
+              </p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
